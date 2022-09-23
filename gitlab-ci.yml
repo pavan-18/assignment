@@ -1,0 +1,29 @@
+stages:
+  - build
+  - deploy
+
+image_build:
+  stage: build
+  tags:
+    - runner_name     # dedicated runner tag if using any
+  only:
+    - master
+  script:
+        - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+        - docker build --no-cache -t $CI_REGISTRY_IMAGE:"$CI_PIPELINE_ID" .
+        - docker push $CI_REGISTRY_IMAGE:"$CI_PIPELINE_ID"
+        - docker tag $CI_REGISTRY_IMAGE:"$CI_PIPELINE_ID" $AWS_REPO_URL:"$CI_PIPELINE_ID"
+        - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 1234567890.dkr.ecr.us-east-1.amazonaws.com
+        - docker push $AWS_REPO_URL:"$CI_PIPELINE_ID"
+        - docker logout
+
+
+image_deploy:
+  stage: deploy
+  tags:
+    - runner_name
+  only:
+    - master
+  script:
+        - chmod +x deploy.sh
+        - deploy.sh
